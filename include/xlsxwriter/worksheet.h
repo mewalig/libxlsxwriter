@@ -800,6 +800,7 @@ typedef struct lxw_worksheet_init_data {
     uint32_t index;
     uint8_t hidden;
     uint8_t optimize;
+    uint64_t sst_memory;
     uint16_t *active_sheet;
     uint16_t *first_sheet;
     lxw_sst *sst;

@@ -26,6 +26,7 @@ STAILQ_HEAD(sst_order_list, sst_element);
 #define LXW_RB_GENERATE_ELEMENT(name, type, field, cmp) \
     RB_GENERATE_INSERT_COLOR(name, type, field, static) \
     RB_GENERATE_INSERT(name, type, field, cmp, static)  \
+    RB_GENERATE_FIND(name, type, field, cmp, static)  \
     /* Add unused struct to allow adding a semicolon */ \
     struct lxw_rb_generate_element{int unused;}
 
@@ -51,6 +52,8 @@ typedef struct lxw_sst {
 
     uint32_t string_count;
     uint32_t unique_count;
+    uint64_t max_memory;
+    uint64_t used_memory;
 
     struct sst_order_list *order_list;
     struct sst_rb_tree *rb_tree;
@@ -63,7 +66,7 @@ extern "C" {
 #endif
 /* *INDENT-ON* */
 
-lxw_sst *lxw_sst_new(void);
+lxw_sst *lxw_sst_new(uint64_t max_memory);
 void lxw_sst_free(lxw_sst *sst);
 struct sst_element *lxw_get_sst_index(lxw_sst *sst, const char *string,
                                       uint8_t is_rich_string);

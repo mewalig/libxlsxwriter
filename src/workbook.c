@@ -1443,7 +1443,7 @@ workbook_new_opt(const char *filename, lxw_workbook_options *options)
     TAILQ_INIT(workbook->defined_names);
 
     /* Add the shared strings table. */
-    workbook->sst = lxw_sst_new();
+    workbook->sst = lxw_sst_new(options->sst_memory);
     GOTO_LABEL_ON_MEM_ERROR(workbook->sst, mem_error);
 
     /* Add the default workbook properties. */
@@ -1490,7 +1490,7 @@ workbook_add_worksheet(lxw_workbook *self, const char *sheetname)
     lxw_worksheet *worksheet = NULL;
     lxw_worksheet_name *worksheet_name = NULL;
     lxw_error error;
-    lxw_worksheet_init_data init_data = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    lxw_worksheet_init_data init_data = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     char *new_name = NULL;
 
     if (sheetname) {
@@ -1526,6 +1526,7 @@ workbook_add_worksheet(lxw_workbook *self, const char *sheetname)
     init_data.index = self->num_sheets;
     init_data.sst = self->sst;
     init_data.optimize = self->options.constant_memory;
+    init_data.sst_memory = self->options.sst_memory;
     init_data.active_sheet = &self->active_sheet;
     init_data.first_sheet = &self->first_sheet;
     init_data.tmpdir = self->options.tmpdir;
@@ -1572,7 +1573,7 @@ workbook_add_chartsheet(lxw_workbook *self, const char *sheetname)
     lxw_chartsheet *chartsheet = NULL;
     lxw_chartsheet_name *chartsheet_name = NULL;
     lxw_error error;
-    lxw_worksheet_init_data init_data = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    lxw_worksheet_init_data init_data = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     char *new_name = NULL;
 
     if (sheetname) {
@@ -1609,6 +1610,7 @@ workbook_add_chartsheet(lxw_workbook *self, const char *sheetname)
     init_data.index = self->num_sheets;
     init_data.sst = self->sst;
     init_data.optimize = self->options.constant_memory;
+    init_data.sst_memory = self->options.sst_memory;
     init_data.active_sheet = &self->active_sheet;
     init_data.first_sheet = &self->first_sheet;
     init_data.tmpdir = self->options.tmpdir;

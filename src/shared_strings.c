@@ -34,7 +34,7 @@ LXW_RB_GENERATE_ELEMENT(sst_rb_tree, sst_element, sst_tree_pointers,
  * Create a new SST SharedString object.
  */
 lxw_sst *
-lxw_sst_new(void)
+lxw_sst_new(uint64_t max_memory)
 {
     /* Create the new shared string table. */
     lxw_sst *sst = calloc(1, sizeof(lxw_sst));
@@ -53,6 +53,9 @@ lxw_sst_new(void)
 
     /* Initialize the RB tree. */
     RB_INIT(sst->rb_tree);
+
+    /* Initialize max_memory */
+    sst->max_memory = max_memory;
 
     return sst;
 
@@ -248,6 +251,9 @@ lxw_get_sst_index(lxw_sst *sst, const char *string, uint8_t is_rich_string)
     struct sst_element *element;
     struct sst_element *existing_element;
 
+    uint64_t max_memory = sst->max_memory;
+    uint64_t element_size;
+
     /* Create an sst element to potentially add to the table. */
     element = calloc(1, sizeof(struct sst_element));
     if (!element)
@@ -255,20 +261,41 @@ lxw_get_sst_index(lxw_sst *sst, const char *string, uint8_t is_rich_string)
 
     /* Create potential new element with the string and its index. */
     element->index = sst->unique_count;
-    element->string = lxw_strdup(string);
+
+    /* defer strdup until we know we will keep this element */
+    element->string = (char *)string;
     element->is_rich_string = is_rich_string;
 
+    if(max_memory) {
+      /* we have an sst memory limit */
+      existing_element = RB_FIND(sst_rb_tree, sst->rb_tree, element);
+      element_size = sizeof(*element) + strlen(string) + 1;
+
+      /* if no element found, and we don't have enough memory to add it, then clean up and return */
+      if(existing_element == NULL && max_memory < element_size + sst->used_memory) {
+        free(element);
+        return NULL;
+      }
+    } else
+      existing_element = NULL;
+
     /* Try to insert it and see whether we already have that string. */
-    existing_element = RB_INSERT(sst_rb_tree, sst->rb_tree, element);
+
+    /* only insert if existing_element == NULL, or we have sufficient memory capacity */
+    if(existing_element == NULL)
+      existing_element = RB_INSERT(sst_rb_tree, sst->rb_tree, element);
 
     /* If existing_element is not NULL, then it already existed. */
     /* Free new created element. */
     if (existing_element) {
-        free(element->string);
         free(element);
         sst->string_count++;
         return existing_element;
     }
+
+    element->string = lxw_strdup(string);
+    if(max_memory)
+      sst->used_memory += element_size;
 
     /* If it didn't exist, also add it to the insertion order linked list. */
     STAILQ_INSERT_TAIL(sst->order_list, element, sst_order_pointers);
