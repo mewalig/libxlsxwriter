@@ -40,7 +40,15 @@ LXW_RB_GENERATE_CHARTSHEET_NAMES(lxw_chartsheet_names, lxw_chartsheet_name,
 STATIC int
 _worksheet_name_cmp(lxw_worksheet_name *name1, lxw_worksheet_name *name2)
 {
-    return strcmp(name1->name, name2->name);
+  /* return strcmp(name1->name, name2->name); */
+  const char *n1, *n2;
+  for(n1 = name1->name, n2 = name2->name; *n1 && *n2; n1++, n2++) {
+    char c1 = (*n1 >= 'A' && *n1 <= 'Z') ? tolower(*n1) : *n1;
+    char c2 = (*n2 >= 'A' && *n2 <= 'Z') ? tolower(*n2) : *n2;
+    if(c1 != c2)
+      return c1 > c2 ? 1 : c1 == c2 ? 0 : -1;
+  }
+  return *n1 > *n2 ? 1 : *n1 == *n2 ? 0 : -1;
 }
 
 STATIC int
@@ -1443,7 +1451,7 @@ workbook_new_opt(const char *filename, lxw_workbook_options *options)
     TAILQ_INIT(workbook->defined_names);
 
     /* Add the shared strings table. */
-    workbook->sst = lxw_sst_new(options->sst_memory);
+    workbook->sst = lxw_sst_new(options ? options->sst_memory : 0);
     GOTO_LABEL_ON_MEM_ERROR(workbook->sst, mem_error);
 
     /* Add the default workbook properties. */

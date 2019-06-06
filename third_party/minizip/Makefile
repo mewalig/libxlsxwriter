@@ -11,6 +11,16 @@ endif
 
 UNAME := $(shell uname -sr)
 
+WIN=0
+ifeq ($(WIN),1)
+SO_SUFFIX=.dll
+O_SUFFIX=.w64o
+else
+SO_SUFFIX=.so
+O_SUFFIX=.o
+endif
+
+
 # Check for MinGW/MinGW64/Cygwin environments.
 ifneq (,$(findstring MINGW, $(UNAME)))
 MING_LIKE = y
@@ -37,13 +47,13 @@ ifneq (,$(findstring gentoo, $(UNAME)))
 CFLAGS += -DOF=_Z_OF
 endif
 
-all: ioapi.o zip.o  ioapi.so zip.so
+all: ioapi$(O_SUFFIX) zip$(O_SUFFIX)  ioapi$(SO_SUFFIX) zip$(SO_SUFFIX)
 
-%.o  : %.c
-	$(Q)$(CC)         -c $(CFLAGS) $<
+%$(O_SUFFIX)  : %.c
+	$(Q)$(CC)         -c $(CFLAGS) $< -o $@
 
-%.so : %.c
+%$(SO_SUFFIX) : %.c
 	$(Q)$(CC) $(FPIC) -c $(CFLAGS) $< -o $@
 
 clean:
-	$(Q)/bin/rm -f *.o *.so
+	$(Q)/bin/rm -f *$(O_SUFFIX) *$(SO_SUFFIX)

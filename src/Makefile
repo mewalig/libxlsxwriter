@@ -15,7 +15,19 @@ endif
 OBJS_DIR    = .
 INC_DIR     = ../include
 
-LIBS = -lz
+WIN=0
+ifeq ($(WIN),1)
+	SO_SUFFIX=.dll
+	O_SUFFIX=.w64o
+	A_SUFFIX=.w64a
+	LIBS = -l:libz.a
+else
+	SO_SUFFIX=.so
+	O_SUFFIX=.o
+	A_SUFFIX=.a
+	LIBS = -lz
+endif
+
 
 ifdef USE_SYSTEM_MINIZIP
 LIBS   += -lminizip
@@ -23,8 +35,8 @@ CFLAGS += -DUSE_SYSTEM_MINIZIP
 else
 # Use the local copy of minizip.
 MINIZIP_DIR = ../third_party/minizip
-MINIZIP_OBJ = $(MINIZIP_DIR)/ioapi.o  $(MINIZIP_DIR)/zip.o
-MINIZIP_SO  = $(MINIZIP_DIR)/ioapi.so $(MINIZIP_DIR)/zip.so
+MINIZIP_OBJ = $(MINIZIP_DIR)/ioapi$(O_SUFFIX)  $(MINIZIP_DIR)/zip$(O_SUFFIX)
+MINIZIP_SO  = $(MINIZIP_DIR)/ioapi$(SO_SUFFIX) $(MINIZIP_DIR)/zip$(SO_SUFFIX)
 endif
 
 
@@ -34,8 +46,8 @@ CFLAGS += -DUSE_STANDARD_TMPFILE
 else
 # Use tmpfileplus (the default).
 TMPFILEPLUS_DIR = ../third_party/tmpfileplus
-TMPFILEPLUS_OBJ = $(TMPFILEPLUS_DIR)/tmpfileplus.o
-TMPFILEPLUS_SO  = $(TMPFILEPLUS_DIR)/tmpfileplus.so
+TMPFILEPLUS_OBJ = $(TMPFILEPLUS_DIR)/tmpfileplus$(O_SUFFIX)
+TMPFILEPLUS_SO  = $(TMPFILEPLUS_DIR)/tmpfileplus$(SO_SUFFIX)
 endif
 
 # Set flag for big endian architecture.
@@ -49,7 +61,7 @@ CFLAGS += -DUSE_DOUBLE_FUNCTION
 endif
 
 # Flags passed to compiler.
-CFLAGS   += -g -O3 -Wall -Wextra -pedantic -ansi
+CFLAGS   += -O3 -Wall -Wextra -pedantic -ansi
 
 # Fix for modified zconf.h on Gentoo.
 ifneq (,$(findstring gentoo, $(shell uname -sr)))
@@ -63,11 +75,11 @@ CFLAGS   +=-diag-disable=11074,11076
 endif
 
 # Library names.
-LIBXLSXWRITER_A  = libxlsxwriter.a
-LIBXLSXWRITER_SO = libxlsxwriter.so
+LIBXLSXWRITER_A  = libxlsxwriter$(A_SUFFIX)
+LIBXLSXWRITER_SO = libxlsxwriter$(SO_SUFFIX)
 
 # Library with additional non-static functions for testing.
-LIBXLSXWRITER_TO = libxlsxwriter_test.a
+LIBXLSXWRITER_TO = libxlsxwriter_test$(A_SUFFIX)
 
 # Flags passed to static linker.
 ARFLAGS = rc
@@ -81,7 +93,7 @@ UNAME := $(shell uname)
 
 # Change make options on OS X.
 ifeq ($(UNAME), Darwin)
-LIBXLSXWRITER_SO = libxlsxwriter.dylib
+# LIBXLSXWRITER_SO = libxlsxwriter.dylib
 SOFLAGS = -dynamiclib $(FPIC) -install_name /usr/lib/$(LIBXLSXWRITER_SO)
 endif
 
@@ -109,8 +121,8 @@ HDRS = $(wildcard ../include/xlsxwriter/*.h)
 
 # Ojects to compile.
 SRCS  = $(wildcard *.c)
-OBJS  = $(patsubst %.c,%.o,$(SRCS))
-SOBJS = $(patsubst %.c,%.so,$(SRCS))
+OBJS  = $(patsubst %.c,%$(O_SUFFIX),$(SRCS))
+SOBJS = $(patsubst %.c,%$(SO_SUFFIX),$(SRCS))
 TOBJS = $(patsubst %.c,%.to,$(SRCS))
 # End of OBJS
 
@@ -118,7 +130,7 @@ TOBJS = $(patsubst %.c,%.to,$(SRCS))
 all : $(LIBXLSXWRITER_A) $(LIBXLSXWRITER_SO)
 	$(Q)cp $(LIBXLSXWRITER_A) $(LIBXLSXWRITER_SO) ../lib
 
-test_lib : libxlsxwriter_test.a
+test_lib : libxlsxwriter_test$(A_SUFFIX)
 
 # The static library.
 $(LIBXLSXWRITER_A) : $(OBJS)
@@ -140,16 +152,16 @@ $(LIBXLSXWRITER_TO) : $(TOBJS)
 test_compile : $(OBJS)
 
 # Targets for the object files.
-%.o  : %.c $(HDRS)
-	$(Q)$(CC) -I$(INC_DIR) $(CFLAGS) $(CXXFLAGS) -c $<
+%$(O_SUFFIX)  : %.c $(HDRS)
+	$(Q)$(CC) -I$(INC_DIR) $(CFLAGS) $(CXXFLAGS) -c $< -o $@
 
-%.so : %.c $(HDRS)
+%$(SO_SUFFIX) : %.c $(HDRS)
 	$(Q)$(CC) $(FPIC) -I$(INC_DIR) $(CFLAGS) $(CXXFLAGS) -c $< -o $@
 
 %.to : %.c $(HDRS)
-	$(Q)$(CC) -g -O3 -DTESTING -I$(INC_DIR) $(CFLAGS) $(CXXFLAGS) -c $< -o $@
+	$(Q)$(CC) -O3 -DTESTING -I$(INC_DIR) $(CFLAGS) $(CXXFLAGS) -c $< -o $@
 
 
 # Clean up any temp/build files.
 clean :
-	$(Q)rm -f *.o *.a *.so *.to *.dylib *.dll
+	$(Q)rm -f *$(O_SUFFIX) *$(A_SUFFIX) *$(SO_SUFFIX) *.to *.dylib *.dll

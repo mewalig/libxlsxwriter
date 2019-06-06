@@ -34,8 +34,13 @@ int main() {
     worksheet_write_url(worksheet,    0, 0, "http://libxlsxwriter.github.io", url_format);
 
     /* Write a hyperlink but overwrite the displayed string. */
-    worksheet_write_url   (worksheet, 2, 0, "http://libxlsxwriter.github.io", url_format);
+    // worksheet_write_url   (worksheet, 2, 0, "http://libxlsxwriter.github.io", url_format);
+    worksheet_write_url   (worksheet, 2, 0, "#'Sheet1'!A10", NULL);//url_format);
     worksheet_write_string(worksheet, 2, 0, "Read the documentation.",        url_format);
+
+//    var linkcell = summary_ws["A10" + (boid + 2)];
+//                linkcell.l = { Target: "#'" + breakout_header_names[boid] + "'!A1" };
+
 
     /* Write a hyperlink with a different format. */
     worksheet_write_url(worksheet,    4, 0, "http://libxlsxwriter.github.io", red_format);

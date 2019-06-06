@@ -17,15 +17,31 @@ INC_DIR = ../include
 # Flags passed to the C++ compiler.
 CFLAGS += -g -Wall -Wextra
 
+# file suffix changes for cross-compilation
+WIN=0
+ifeq ($(WIN),1)
+SO_SUFFIX=.dll
+O_SUFFIX=.w64o
+A_SUFFIX=.w64a
+else
+SO_SUFFIX=.so
+O_SUFFIX=.o
+A_SUFFIX=.a
+endif
+
 # Source files to compile.
 SRCS = $(wildcard *.c)
 EXES = $(patsubst %.c,%,$(SRCS))
 
-LIBXLSXWRITER = ../src/libxlsxwriter.a
+LIBXLSXWRITER = ../src/libxlsxwriter$(A_SUFFIX)
 
 LIBS = $(LIBXLSXWRITER) -lz
 ifdef USE_SYSTEM_MINIZIP
 LIBS += -lminizip
+endif
+
+ifdef ZLIB_PATH
+LIBS += -L $(ZLIB_PATH)
 endif
 
 all : $(LIBXLSXWRITER) $(EXES)

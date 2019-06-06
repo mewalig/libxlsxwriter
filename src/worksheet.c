@@ -3869,6 +3869,65 @@ worksheet_write_number(lxw_worksheet *self,
     return LXW_NO_ERROR;
 }
 
+
+/*
+  _get_string_cell(): consolidates code between
+    worksheet_write_string()
+      and
+    worksheet_write_rich_string()
+*/
+static lxw_cell *
+_get_string_cell(lxw_worksheet *self, 
+                 lxw_row_t row_num, lxw_col_t col_num,
+                 char *string, uint8_t is_rich_string,
+                 lxw_format *format,
+                 lxw_error *err) {
+  static lxw_cell *cell;
+  char used_sst = 0;
+
+  *err = 0;
+
+  if(!self->optimize || (self->sst && self->sst->max_memory)) {
+    /* Get the SST element and string id. */
+    struct sst_element *sst_element = lxw_get_sst_index(self->sst, string, is_rich_string);
+
+    if(!sst_element) {
+      if(!(self->sst && self->sst->max_memory)) {
+        *err = LXW_ERROR_SHARED_STRING_INDEX_NOT_FOUND;
+        return NULL;
+      }
+    } else {
+      used_sst = 1;
+      if(is_rich_string == LXW_TRUE)
+        free(string);
+
+      cell = _new_string_cell(row_num, col_num, sst_element->index, sst_element->string, format);
+    }
+  }
+
+  if(!used_sst) {
+    char *string_copy;
+    /* Look for and escape control chars in the string. */
+    if(strpbrk(string, "\x01\x02\x03\x04\x05\x06\x07\x08\x0B\x0C"
+                "\x0D\x0E\x0F\x10\x11\x12\x13\x14\x15\x16"
+                    "\x17\x18\x19\x1A\x1B\x1C\x1D\x1E\x1F")) {
+      string_copy = lxw_escape_control_characters(string);
+      if(is_rich_string)
+        free(string);
+    } else if(is_rich_string)
+      string_copy = string;
+    else
+      string_copy = lxw_strdup(string);
+
+    if(is_rich_string)
+      cell = _new_inline_rich_string_cell(row_num, col_num, string_copy, format);
+    else
+      cell = _new_inline_string_cell(row_num, col_num, string_copy, format);
+  }
+
+  return cell;
+}
+
 /*
  * Write a string to an Excel file.
  */
@@ -3879,11 +3938,7 @@ worksheet_write_string(lxw_worksheet *self,
                        lxw_format *format)
 {
     lxw_cell *cell;
-    int32_t string_id;
-    char *string_copy;
-    struct sst_element *sst_element;
     lxw_error err;
-    char used_sst;
 
     if (!string || !*string) {
         /* Treat a NULL or empty string with formatting as a blank cell. */
@@ -3901,35 +3956,11 @@ worksheet_write_string(lxw_worksheet *self,
     if (lxw_utf8_strlen(string) > LXW_STR_MAX)
         return LXW_ERROR_MAX_STRING_LENGTH_EXCEEDED;
 
-    used_sst = 0;
-    if (!self->optimize || (self->sst && self->sst->max_memory)) {
-        /* Get the SST element and string id. */
-        sst_element = lxw_get_sst_index(self->sst, string, LXW_FALSE);
-
-        if (!sst_element) {
-          if(!(self->sst && self->sst->max_memory))
-            return LXW_ERROR_SHARED_STRING_INDEX_NOT_FOUND;
-        } else {
-          used_sst = 1;
-          string_id = sst_element->index;
-          cell = _new_string_cell(row_num, col_num, string_id,
-                                  sst_element->string, format);
-        }
-    }
-
-    if(!used_sst) {
-        /* Look for and escape control chars in the string. */
-        if (strpbrk(string, "\x01\x02\x03\x04\x05\x06\x07\x08\x0B\x0C"
-                    "\x0D\x0E\x0F\x10\x11\x12\x13\x14\x15\x16"
-                    "\x17\x18\x19\x1A\x1B\x1C\x1D\x1E\x1F")) {
-            string_copy = lxw_escape_control_characters(string);
-        }
-        else {
-            string_copy = lxw_strdup(string);
-        }
-        cell = _new_inline_string_cell(row_num, col_num, string_copy, format);
-    }
-
+    cell = _get_string_cell(self, row_num, col_num,
+                            (char *)string, LXW_FALSE, format, &err);
+    if(err)
+      return err;
+    
     _insert_cell(self, row_num, col_num, cell);
 
     return LXW_NO_ERROR;
@@ -4371,6 +4402,7 @@ mem_error:
     return LXW_ERROR_MEMORY_MALLOC_FAILED;
 }
 
+
 /*
  * Write a hyperlink/url to an Excel file.
  */
@@ -4399,13 +4431,11 @@ worksheet_write_rich_string(lxw_worksheet *self,
                             lxw_format *format)
 {
     lxw_cell *cell;
-    int32_t string_id;
-    struct sst_element *sst_element;
     lxw_error err;
     uint8_t i;
     long file_size;
     char *rich_string = NULL;
-    char *string_copy = NULL;
+    /* char *string_copy = NULL; */
     lxw_styles *styles = NULL;
     lxw_format *default_format = NULL;
     lxw_rich_string_tuple *rich_string_tuple = NULL;
@@ -4494,32 +4524,10 @@ worksheet_write_rich_string(lxw_worksheet *self,
         return LXW_ERROR_MAX_STRING_LENGTH_EXCEEDED;
     }
 
-    if (!self->optimize) {
-        /* Get the SST element and string id. */
-        sst_element = lxw_get_sst_index(self->sst, rich_string, LXW_TRUE);
-        free(rich_string);
-
-        if (!sst_element)
-            return LXW_ERROR_SHARED_STRING_INDEX_NOT_FOUND;
-
-        string_id = sst_element->index;
-        cell = _new_string_cell(row_num, col_num, string_id,
-                                sst_element->string, format);
-    }
-    else {
-        /* Look for and escape control chars in the string. */
-        if (strpbrk(rich_string, "\x01\x02\x03\x04\x05\x06\x07\x08\x0B\x0C"
-                    "\x0D\x0E\x0F\x10\x11\x12\x13\x14\x15\x16"
-                    "\x17\x18\x19\x1A\x1B\x1C\x1D\x1E\x1F")) {
-            string_copy = lxw_escape_control_characters(rich_string);
-            free(rich_string);
-        }
-        else {
-            string_copy = rich_string;
-        }
-        cell = _new_inline_rich_string_cell(row_num, col_num, string_copy,
-                                            format);
-    }
+    cell = _get_string_cell(self, row_num, col_num, rich_string, LXW_TRUE, format, &err);
+                                      
+    if(err)
+      return err;
 
     _insert_cell(self, row_num, col_num, cell);
 
