@@ -16,16 +16,16 @@ OBJS_DIR    = .
 INC_DIR     = ../include
 
 WIN=0
-ifeq ($(WIN),1)
-	SO_SUFFIX=.dll
-	O_SUFFIX=.w64o
-	A_SUFFIX=.w64a
-	LIBS = -l:libz.a
-else
+ifeq ($(WIN),0)
 	SO_SUFFIX=.so
 	O_SUFFIX=.o
 	A_SUFFIX=.a
 	LIBS = -lz
+else
+	SO_SUFFIX=.dll
+	O_SUFFIX=.w64o
+	A_SUFFIX=.w64a
+	LIBS = -l:libz.a
 endif
 
 
