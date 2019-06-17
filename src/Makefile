@@ -17,11 +17,13 @@ INC_DIR     = ../include
 
 WIN=0
 ifeq ($(WIN),0)
+	TO_SUFFIX=.to
 	SO_SUFFIX=.so
 	O_SUFFIX=.o
 	A_SUFFIX=.a
 	LIBS = -lz
 else
+	TO_SUFFIX=.w64to
 	SO_SUFFIX=.dll
 	O_SUFFIX=.w64o
 	A_SUFFIX=.w64a
@@ -123,7 +125,7 @@ HDRS = $(wildcard ../include/xlsxwriter/*.h)
 SRCS  = $(wildcard *.c)
 OBJS  = $(patsubst %.c,%$(O_SUFFIX),$(SRCS))
 SOBJS = $(patsubst %.c,%$(SO_SUFFIX),$(SRCS))
-TOBJS = $(patsubst %.c,%.to,$(SRCS))
+TOBJS = $(patsubst %.c,%$(TO_SUFFIX),$(SRCS))
 # End of OBJS
 
 # Build the object files and the libraries.
@@ -142,7 +144,7 @@ ARCH = -m32
 endif
 
 $(LIBXLSXWRITER_SO) : $(SOBJS)
-	$(Q)$(CC) $(SOFLAGS) $(ARCH) -o $@ $(MINIZIP_SO) $(TMPFILEPLUS_SO) $^ $(LIBS)
+	$(Q)$(CC) $(LDFLAGS) $(SOFLAGS) $(ARCH) -o $@ $(MINIZIP_SO) $(TMPFILEPLUS_SO) $^ $(LIBS)
 
 # The test library.
 $(LIBXLSXWRITER_TO) : $(TOBJS)
@@ -156,12 +158,12 @@ test_compile : $(OBJS)
 	$(Q)$(CC) -I$(INC_DIR) $(CFLAGS) $(CXXFLAGS) -c $< -o $@
 
 %$(SO_SUFFIX) : %.c $(HDRS)
-	$(Q)$(CC) $(FPIC) -I$(INC_DIR) $(CFLAGS) $(CXXFLAGS) -c $< -o $@
+	$(Q)$(CC) $(FPIC) -I$(INC_DIR) $(LDFLAGS) $(CFLAGS) $(CXXFLAGS) -c $< -o $@
 
-%.to : %.c $(HDRS)
+%$(TO_SUFFIX) : %.c $(HDRS)
 	$(Q)$(CC) -O3 -DTESTING -I$(INC_DIR) $(CFLAGS) $(CXXFLAGS) -c $< -o $@
 
 
 # Clean up any temp/build files.
 clean :
-	$(Q)rm -f *$(O_SUFFIX) *$(A_SUFFIX) *$(SO_SUFFIX) *.to *.dylib *.dll
+	$(Q)rm -f *$(O_SUFFIX) *$(A_SUFFIX) *$(SO_SUFFIX) *$(TO_SUFFIX) *.dylib *.dll
