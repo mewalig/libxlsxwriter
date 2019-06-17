@@ -1729,13 +1729,14 @@ workbook_close(lxw_workbook *self)
     _add_chart_cache_data(self);
 
     /* Create a packager object to assemble sub-elements into a zip file. */
-    packager = lxw_packager_new(self->filename, self->options.tmpdir);
+    packager = lxw_packager_new(self->filename,
+                                self->options.tmpdir, self->use_zip64);
 
     /* If the packager fails it is generally due to a zip permission error. */
     if (packager == NULL) {
         fprintf(stderr, "[ERROR] workbook_close(): "
                 "Error creating '%s'. "
-                "Error = %s\n", self->filename, strerror(errno));
+                "System error = %s\n", self->filename, strerror(errno));
 
         error = LXW_ERROR_CREATING_XLSX_FILE;
         goto mem_error;
@@ -1751,26 +1752,47 @@ workbook_close(lxw_workbook *self)
     if (error == LXW_ERROR_CREATING_TMPFILE) {
         fprintf(stderr, "[ERROR] workbook_close(): "
                 "Error creating tmpfile(s) to assemble '%s'. "
-                "Error = %s\n", self->filename, strerror(errno));
+                "System error = %s\n", self->filename, strerror(errno));
     }
 
-    /* If LXW_ERROR_ZIP_FILE_OPERATION then errno is set by zlib. */
+    /* If LXW_ERROR_ZIP_FILE_OPERATION then errno is set by zip. */
     if (error == LXW_ERROR_ZIP_FILE_OPERATION) {
         fprintf(stderr, "[ERROR] workbook_close(): "
-                "Zlib error while creating xlsx file '%s'. "
-                "Error = %s\n", self->filename, strerror(errno));
+                "Zip ZIP_ERRNO error while creating xlsx file '%s'. "
+                "System error = %s\n", self->filename, strerror(errno));
+    }
+
+    /* If LXW_ERROR_ZIP_PARAMETER_ERROR then errno is set by zip. */
+    if (error == LXW_ERROR_ZIP_PARAMETER_ERROR) {
+        fprintf(stderr, "[ERROR] workbook_close(): "
+                "Zip ZIP_PARAMERROR error while creating xlsx file '%s'. "
+                "System error = %s\n", self->filename, strerror(errno));
+    }
+
+    /* If LXW_ERROR_ZIP_BAD_ZIP_FILE then errno is set by zip. */
+    if (error == LXW_ERROR_ZIP_BAD_ZIP_FILE) {
+        fprintf(stderr, "[ERROR] workbook_close(): "
+                "Zip ZIP_BADZIPFILE error while creating xlsx file '%s'. "
+                "This may require the use_zip64 option for large files. "
+                "System error = %s\n", self->filename, strerror(errno));
+    }
+
+    /* If LXW_ERROR_ZIP_INTERNAL_ERROR then errno is set by zip. */
+    if (error == LXW_ERROR_ZIP_INTERNAL_ERROR) {
+        fprintf(stderr, "[ERROR] workbook_close(): "
+                "Zip ZIP_INTERNALERROR error while creating xlsx file '%s'. "
+                "System error = %s\n", self->filename, strerror(errno));
     }
 
     /* The next 2 error conditions don't set errno. */
     if (error == LXW_ERROR_ZIP_FILE_ADD) {
         fprintf(stderr, "[ERROR] workbook_close(): "
-                "Zlib error adding file to xlsx file '%s'.\n",
-                self->filename);
+                "Zip error adding file to xlsx file '%s'.\n", self->filename);
     }
 
     if (error == LXW_ERROR_ZIP_CLOSE) {
         fprintf(stderr, "[ERROR] workbook_close(): "
-                "Zlib error closing xlsx file '%s'.\n", self->filename);
+                "Zip error closing xlsx file '%s'.\n", self->filename);
     }
 
 mem_error:
@@ -2133,4 +2155,13 @@ workbook_validate_sheet_name(lxw_workbook *self, const char *sheetname)
         return LXW_ERROR_SHEETNAME_ALREADY_USED;
 
     return LXW_NO_ERROR;
+}
+
+/*
+ * Allow ZIP64 extensions when creating the xlsx file zip container.
+ */
+void
+workbook_use_zip64(lxw_workbook *workbook)
+{
+    workbook->use_zip64 = LXW_TRUE;
 }
