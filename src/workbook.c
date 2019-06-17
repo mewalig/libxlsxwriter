@@ -208,6 +208,8 @@ lxw_workbook_free(lxw_workbook *workbook)
     lxw_sst_free(workbook->sst);
     free(workbook->options.tmpdir);
     free(workbook->ordered_charts);
+    free(workbook->vba_project);
+    free(workbook->vba_codename);
     free(workbook);
 }
 
@@ -885,9 +887,9 @@ _prepare_drawings(lxw_workbook *self)
     lxw_sheet *sheet;
     lxw_worksheet *worksheet;
     lxw_image_options *image_options;
-    uint16_t chart_ref_id = 0;
-    uint16_t image_ref_id = 0;
-    uint16_t drawing_id = 0;
+    uint32_t chart_ref_id = 0;
+    uint32_t image_ref_id = 0;
+    uint32_t drawing_id = 0;
     uint8_t is_chartsheet;
 
     STAILQ_FOREACH(sheet, self->sheets, list_pointers) {
@@ -1135,6 +1137,10 @@ _write_file_version(lxw_workbook *self)
     LXW_PUSH_ATTRIBUTES_STR("lowestEdited", "4");
     LXW_PUSH_ATTRIBUTES_STR("rupBuild", "4505");
 
+    if (self->vba_project)
+        LXW_PUSH_ATTRIBUTES_STR("codeName",
+                                "{37E998C4-C9E5-D4B9-71C8-EB1FF731991C}");
+
     lxw_xml_empty_tag(self->file, "fileVersion", &attributes);
 
     LXW_FREE_ATTRIBUTES();
@@ -1150,6 +1156,10 @@ _write_workbook_pr(lxw_workbook *self)
     struct xml_attribute *attribute;
 
     LXW_INIT_ATTRIBUTES();
+
+    if (self->vba_codename)
+        LXW_PUSH_ATTRIBUTES_STR("codeName", self->vba_codename);
+
     LXW_PUSH_ATTRIBUTES_STR("defaultThemeVersion", "124226");
 
     lxw_xml_empty_tag(self->file, "workbookPr", &attributes);
@@ -1470,6 +1480,7 @@ workbook_new_opt(const char *filename, lxw_workbook_options *options)
     if (options) {
         workbook->options.constant_memory = options->constant_memory;
         workbook->options.tmpdir = lxw_strdup(options->tmpdir);
+        workbook->options.use_zip64 = options->use_zip64;
     }
 
     return workbook;
@@ -1719,6 +1730,22 @@ workbook_close(lxw_workbook *self)
             worksheet->active = 1;
     }
 
+    /* Set workbook and worksheet VBA codenames if a macro has been added. */
+    if (self->vba_project) {
+        if (!self->vba_codename)
+            workbook_set_vba_name(self, "ThisWorkbook");
+
+        STAILQ_FOREACH(sheet, self->sheets, list_pointers) {
+            if (sheet->is_chartsheet)
+                continue;
+            else
+                worksheet = sheet->u.worksheet;
+
+            if (!worksheet->vba_codename)
+                worksheet_set_vba_name(worksheet, worksheet->name);
+        }
+    }
+
     /* Set the defined names for the worksheets such as Print Titles. */
     _prepare_defined_names(self);
 
@@ -1730,7 +1757,8 @@ workbook_close(lxw_workbook *self)
 
     /* Create a packager object to assemble sub-elements into a zip file. */
     packager = lxw_packager_new(self->filename,
-                                self->options.tmpdir, self->use_zip64);
+                                self->options.tmpdir,
+                                self->options.use_zip64);
 
     /* If the packager fails it is generally due to a zip permission error. */
     if (packager == NULL) {
@@ -2158,10 +2186,46 @@ workbook_validate_sheet_name(lxw_workbook *self, const char *sheetname)
 }
 
 /*
- * Allow ZIP64 extensions when creating the xlsx file zip container.
+ * Add a vbaProject binary to the Excel workbook.
  */
-void
-workbook_use_zip64(lxw_workbook *workbook)
+lxw_error
+workbook_add_vba_project(lxw_workbook *self, const char *filename)
 {
-    workbook->use_zip64 = LXW_TRUE;
+    FILE *filehandle;
+
+    if (!filename) {
+        LXW_WARN("workbook_add_vba_project(): "
+                 "filename must be specified.");
+        return LXW_ERROR_NULL_PARAMETER_IGNORED;
+    }
+
+    /* Check that the vbaProject file exists and can be opened. */
+    filehandle = fopen(filename, "rb");
+    if (!filehandle) {
+        LXW_WARN_FORMAT1("workbook_add_vba_project(): "
+                         "file doesn't exist or can't be opened: %s.",
+                         filename);
+        return LXW_ERROR_PARAMETER_VALIDATION;
+    }
+    fclose(filehandle);
+
+    self->vba_project = lxw_strdup(filename);
+
+    return LXW_NO_ERROR;
+}
+
+/*
+ * Set the VBA name for the workbook.
+ */
+lxw_error
+workbook_set_vba_name(lxw_workbook *self, const char *name)
+{
+    if (!name) {
+        LXW_WARN("workbook_set_vba_name(): " "name must be specified.");
+        return LXW_ERROR_NULL_PARAMETER_IGNORED;
+    }
+
+    self->vba_codename = lxw_strdup(name);
+
+    return LXW_NO_ERROR;
 }

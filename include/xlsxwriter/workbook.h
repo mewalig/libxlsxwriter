@@ -203,23 +203,32 @@ typedef struct lxw_doc_properties {
  *
  * The following properties are supported:
  *
- * - `constant_memory`: Reduces the amount of data stored in memory so that
- *   large files can be written efficiently.
+ * - `constant_memory`: This option reduces the amount of data stored in
+ *   memory so that large files can be written efficiently. This option is off
+ *   by default. See the note below for limitations when this mode is on.
  *
- *   @note In this mode a row of data is written and then discarded when a
- *   cell in a new row is added via one of the `worksheet_write_*()`
- *   functions. Therefore, once this option is active, data should be written in
- *   sequential row order. For this reason the `worksheet_merge_range()`
- *   doesn't work in this mode. See also @ref ww_mem_constant.
- *
- * - `tmpdir`: libxlsxwriter stores workbook data in temporary files prior
- *   to assembling the final XLSX file. The temporary files are created in the
+ * - `tmpdir`: libxlsxwriter stores workbook data in temporary files prior to
+ *   assembling the final XLSX file. The temporary files are created in the
  *   system's temp directory. If the default temporary directory isn't
  *   accessible to your application, or doesn't contain enough space, you can
  *   specify an alternative location using the `tmpdir` option.
+ *
+ * - `use_zip64`: Make the zip library use ZIP64 extensions when writing very
+ *   large xlsx files to allow the zip container, or individual XML files
+ *   within it, to be greater than 4 GB. See [ZIP64 on Wikipedia][zip64_wiki]
+ *   for more information. This option is off by default.
+ *
+ *   [zip64_wiki]: https://en.wikipedia.org/wiki/Zip_(file_format)#ZIP64
+ *
+ * @note In `constant_memory` mode a row of data is written and then discarded
+ * when a cell in a new row is added via one of the `worksheet_write_*()`
+ * functions. Therefore, once this option is active, data should be written in
+ * sequential row order. For this reason the `worksheet_merge_range()` doesn't
+ * work in this mode. See also @ref ww_mem_constant.
+ *
  */
 typedef struct lxw_workbook_options {
-    /** Optimize the workbook to use constant memory for worksheets */
+    /** Optimize the workbook to use constant memory for worksheets. */
     uint8_t constant_memory;
 
     /** Ceiling on shared string table memory usage */
@@ -227,6 +236,10 @@ typedef struct lxw_workbook_options {
 
     /** Directory to use for the temporary files created by libxlsxwriter. */
     char *tmpdir;
+
+    /** Allow ZIP64 extensions when creating the xlsx file zip container. */
+    uint8_t use_zip64;
+
 } lxw_workbook_options;
 
 /**
@@ -271,9 +284,11 @@ typedef struct lxw_workbook {
     uint8_t has_png;
     uint8_t has_jpeg;
     uint8_t has_bmp;
-    uint8_t use_zip64;
 
     lxw_hash_table *used_xf_formats;
+
+    char *vba_project;
+    char *vba_codename;
 
 } lxw_workbook;
 
@@ -316,30 +331,37 @@ lxw_workbook *workbook_new(const char *filename);
  * additional options to be set.
  *
  * @code
- *    lxw_workbook_options options = {.constant_memory = 1,
- *                                    .tmpdir = "C:\\Temp"};
+ *    lxw_workbook_options options = {.constant_memory = LXW_TRUE,
+ *                                    .tmpdir = "C:\\Temp",
+ *                                    .use_zip64 = LXW_FALSE};
  *
  *    lxw_workbook  *workbook  = workbook_new_opt("filename.xlsx", &options);
  * @endcode
  *
  * The options that can be set via #lxw_workbook_options are:
  *
- * - `constant_memory`: Reduces the amount of data stored in memory so that
- *   large files can be written efficiently.
+ * - `constant_memory`: This option reduces the amount of data stored in
+ *   memory so that large files can be written efficiently. This option is off
+ *   by default. See the note below for limitations when this mode is on.
  *
- *   @note In this mode a row of data is written and then discarded when a
- *   cell in a new row is added via one of the `worksheet_write_*()`
- *   functions. Therefore, once this option is active, data should be written in
- *   sequential row order. For this reason the `worksheet_merge_range()`
- *   doesn't work in this mode. See also @ref ww_mem_constant.
- *
- * - `tmpdir`: libxlsxwriter stores workbook data in temporary files prior
- *   to assembling the final XLSX file. The temporary files are created in the
+ * - `tmpdir`: libxlsxwriter stores workbook data in temporary files prior to
+ *   assembling the final XLSX file. The temporary files are created in the
  *   system's temp directory. If the default temporary directory isn't
  *   accessible to your application, or doesn't contain enough space, you can
- *   specify an alternative location using the `tmpdir` option.*
+ *   specify an alternative location using the `tmpdir` option.
  *
- * See @ref working_with_memory for more details.
+ * - `use_zip64`: Make the zip library use ZIP64 extensions when writing very
+ *   large xlsx files to allow the zip container, or individual XML files
+ *   within it, to be greater than 4 GB. See [ZIP64 on Wikipedia][zip64_wiki]
+ *   for more information. This option is off by default.
+ *
+ *   [zip64_wiki]: https://en.wikipedia.org/wiki/Zip_(file_format)#ZIP64
+ *
+ * @note In `constant_memory` mode a row of data is written and then discarded
+ * when a cell in a new row is added via one of the `worksheet_write_*()`
+ * functions. Therefore, once this option is active, data should be written in
+ * sequential row order. For this reason the `worksheet_merge_range()` doesn't
+ * work in this mode. See also @ref ww_mem_constant.
  *
  */
 lxw_workbook *workbook_new_opt(const char *filename,
@@ -830,18 +852,45 @@ lxw_error workbook_validate_sheet_name(lxw_workbook *workbook,
                                        const char *sheetname);
 
 /**
- * @brief Allow ZIP64 extensions when creating the xlsx file zip container.
+ * @brief Add a vbaProject binary to the Excel workbook.
  *
  * @param workbook Pointer to a lxw_workbook instance.
+ * @param filename The path/filename of the vbaProject.bin file.
  *
- * Use ZIP64 extensions when writing the xlsx file zip container to allow
- * files greater than 4 GB.
+ * The `%workbook_add_vba_project()` function can be used to add macros or
+ * functions to a workbook using a binary VBA project file that has been
+ * extracted from an existing Excel xlsm file:
  *
  * @code
- *     workbook_use_zip64(workbook);
+ *     workbook_add_vba_project(workbook, "vbaProject.bin");
  * @endcode
+ *
+ * Only one `vbaProject.bin file` can be added per workbook.
+ *
+ * @return A #lxw_error.
  */
-void workbook_use_zip64(lxw_workbook *workbook);
+lxw_error workbook_add_vba_project(lxw_workbook *workbook,
+                                   const char *filename);
+
+/**
+ * @brief Set the VBA name for the workbook.
+ *
+ * @param workbook Pointer to a lxw_workbook instance.
+ * @param name     Name of the workbook used by VBA.
+ *
+ * The `workbook_set_vba_name()` function can be used to set the VBA name for
+ * the workbook. This is sometimes required when a vbaProject macro included
+ * via `workbook_add_vba_project()` refers to the workbook.
+ *
+ * @code
+ *     workbook_set_vba_name(workbook, "MyWorkbook");
+ * @endcode
+ *
+ * The most common Excel VBA name for a workbook is `ThisWorkbook`.
+ *
+ * @return A #lxw_error.
+ */
+lxw_error workbook_set_vba_name(lxw_workbook *workbook, const char *name);
 
 void lxw_workbook_free(lxw_workbook *workbook);
 void lxw_workbook_assemble_xml_file(lxw_workbook *workbook);
