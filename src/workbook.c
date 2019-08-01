@@ -1245,6 +1245,28 @@ _write_sheets(lxw_workbook *self)
 
     lxw_xml_start_tag(self->file, "sheets", NULL);
 
+    /* sort worksheets if sort function was provided */
+    if(self->ws_sort) {
+      /* create a vector for sorting */
+      struct lxw_sheet **sheets_vec = calloc(self->num_sheets, sizeof(*sheets_vec));
+      if(sheets_vec) {
+        int i = 0;
+        STAILQ_FOREACH(sheet, self->sheets, list_pointers) {
+          sheets_vec[i++] = sheet;
+        }
+        qsort(sheets_vec, self->num_sheets, sizeof(*sheets_vec), self->ws_sort);
+
+        /* reset order of workbook->sheets */
+        STAILQ_INIT(self->sheets);
+        for(i = 0; i < self->num_sheets; i++) {
+          if(sheets_vec[i]) {
+            STAILQ_INSERT_TAIL(self->sheets, sheets_vec[i], list_pointers);
+          }
+        }
+      }
+      free(sheets_vec);
+    }
+
     STAILQ_FOREACH(sheet, self->sheets, list_pointers) {
         if (sheet->is_chartsheet) {
             chartsheet = sheet->u.chartsheet;
@@ -1561,7 +1583,8 @@ workbook_add_worksheet(lxw_workbook *self, const char *sheetname)
 
     /* Store the worksheet so we can look it up by name. */
     worksheet_name->name = init_data.name;
-    worksheet_name->worksheet = worksheet;
+    /* worksheet_name->worksheet = worksheet; */
+
     RB_INSERT(lxw_worksheet_names, self->worksheet_names, worksheet_name);
 
     return worksheet;

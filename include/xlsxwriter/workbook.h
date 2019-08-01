@@ -290,6 +290,8 @@ typedef struct lxw_workbook {
     char *vba_project;
     char *vba_codename;
 
+    /* sort ws before save */
+    int (*ws_sort)(const void *a_sheet_ptr_ptr, const void *b_sheet_ptr_ptr);
 } lxw_workbook;
 
 

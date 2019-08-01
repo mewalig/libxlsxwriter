@@ -63,7 +63,8 @@ CFLAGS += -DUSE_DOUBLE_FUNCTION
 endif
 
 # Flags passed to compiler.
-CFLAGS   += -O3 -Wall -Wextra -pedantic -ansi
+CFLAGS   += -O3
+CFLAGS   += -Wall -Wextra -pedantic -ansi
 
 # Fix for modified zconf.h on Gentoo.
 ifneq (,$(findstring gentoo, $(shell uname -sr)))

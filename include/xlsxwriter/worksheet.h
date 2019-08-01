@@ -789,6 +789,9 @@ typedef struct lxw_worksheet {
 
     lxw_drawing *drawing;
 
+    /* hook for custom data */
+    void *custom;
+
     STAILQ_ENTRY (lxw_worksheet) list_pointers;
 
 } lxw_worksheet;
