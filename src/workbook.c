@@ -1583,7 +1583,7 @@ workbook_add_worksheet(lxw_workbook *self, const char *sheetname)
 
     /* Store the worksheet so we can look it up by name. */
     worksheet_name->name = init_data.name;
-    /* worksheet_name->worksheet = worksheet; */
+    worksheet_name->worksheet = worksheet;
 
     RB_INSERT(lxw_worksheet_names, self->worksheet_names, worksheet_name);
 

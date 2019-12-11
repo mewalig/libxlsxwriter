@@ -283,7 +283,7 @@ lxw_get_sst_index(lxw_sst *sst, const char *string, uint8_t is_rich_string)
     /* If existing_element is not NULL, then it already existed. */
     /* Free new created element. */
         free(element);
-        sst->string_count++;
+        /* sst->string_count++; */
         return existing_element;
     }
 
