@@ -6078,12 +6078,38 @@ worksheet_data_validation_cell(lxw_worksheet *self, lxw_row_t row,
 lxw_error
 worksheet_set_vba_name(lxw_worksheet *self, const char *name)
 {
+    int i_len;
+    unsigned int tmp_multiplier;
+    int s_len;
+    char tmp[32];
+
     if (!name) {
         LXW_WARN("worksheet_set_vba_name(): " "name must be specified.");
         return LXW_ERROR_NULL_PARAMETER_IGNORED;
     }
 
-    self->vba_codename = lxw_strdup(name);
+    i_len = 2; /* length of _n suffix */
+    tmp_multiplier = 10;
+    while(tmp_multiplier - 1 < self->index) {
+      tmp_multiplier *= 10;
+      i_len++;
+    }
+
+    s_len = strlen(name);
+    if(s_len + i_len > 31)
+      s_len = 31 - i_len;
+
+    snprintf(tmp, 32, "%.*s_%i", s_len, name, self->index);
+    tmp[31] = '\0';
+    if(!((tmp[0] >= 'a' && tmp[0] <= 'z') || (tmp[0] >= 'A' && tmp[0] <= 'Z')))
+      tmp[0] = 'z';
+
+#define alphanum(c) ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9'))
+    for(i_len = 1; tmp[i_len]; i_len++)
+      if(!alphanum(tmp[i_len]))
+        tmp[i_len] = '_';
+
+    self->vba_codename = lxw_strdup(tmp);
 
     return LXW_NO_ERROR;
 }
