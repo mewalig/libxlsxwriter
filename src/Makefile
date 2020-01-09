@@ -11,6 +11,9 @@ ifdef V
 Q=
 endif
 
+DESTIDR ?=
+PREFIX  ?= /usr/local
+
 # Directory variables.
 OBJS_DIR    = .
 INC_DIR     = ../include
@@ -106,7 +109,7 @@ UNAME := $(shell uname)
 # Change make options on OS X.
 ifeq ($(UNAME), Darwin)
 # LIBXLSXWRITER_SO = libxlsxwriter.dylib
-SOFLAGS = -dynamiclib $(FPIC) -install_name /usr/lib/$(LIBXLSXWRITER_SO)
+SOFLAGS = -dynamiclib $(FPIC) -install_name $(PREFIX)/lib/$(LIBXLSXWRITER_SO)
 endif
 
 # Check for MinGW/MinGW64/Cygwin environments.
