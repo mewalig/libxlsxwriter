@@ -60,8 +60,8 @@ CFLAGS += -DUSE_NO_MD5
 else
 # Use md5 (the default).
 MD5_DIR = ../third_party/md5
-MD5_OBJ = $(MD5_DIR)/md5.o
-MD5_SO  = $(MD5_DIR)/md5.so
+MD5_OBJ = $(MD5_DIR)/md5$(O_SUFFIX)
+MD5_SO  = $(MD5_DIR)/md5$(SO_SUFFIX)
 endif
 
 # Set flag for big endian architecture.

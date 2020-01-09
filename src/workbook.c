@@ -1646,7 +1646,7 @@ workbook_add_worksheet(lxw_workbook *self, const char *sheetname)
     lxw_worksheet *worksheet = NULL;
     lxw_worksheet_name *worksheet_name = NULL;
     lxw_error error;
-    lxw_worksheet_init_data init_data = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    lxw_worksheet_init_data init_data = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     char *new_name = NULL;
 
     if (sheetname) {
@@ -1732,7 +1732,7 @@ workbook_add_chartsheet(lxw_workbook *self, const char *sheetname)
     lxw_chartsheet *chartsheet = NULL;
     lxw_chartsheet_name *chartsheet_name = NULL;
     lxw_error error;
-    lxw_worksheet_init_data init_data = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    lxw_worksheet_init_data init_data = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     char *new_name = NULL;
 
     if (sheetname) {
