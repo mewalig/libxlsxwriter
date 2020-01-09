@@ -14,6 +14,7 @@ endif
 INSTALL_DIR ?= /usr/local
 
 PYTEST ?= py.test
+PYTESTFILES ?= test
 
 .PHONY: docs tags examples
 
@@ -24,6 +25,9 @@ ifndef USE_SYSTEM_MINIZIP
 endif
 ifndef USE_STANDARD_TMPFILE
 	$(Q)$(MAKE) -C third_party/tmpfileplus
+endif
+ifndef USE_NO_MD5
+	$(Q)$(MAKE) -C third_party/md5
 endif
 	$(Q)$(MAKE) -C src
 
@@ -47,9 +51,12 @@ endif
 ifndef USE_STANDARD_TMPFILE
 	$(Q)$(MAKE) clean -C third_party/tmpfileplus
 endif
+ifndef USE_NO_MD5
+	$(Q)$(MAKE) clean -C third_party/md5
+endif
 
 # Run the unit tests.
-test : all test_functional test_unit
+test : all test_unit test_functional
 
 # Test for C++ const correctness on APIs.
 test_const : all
@@ -60,7 +67,7 @@ test_const : all
 # Run the functional tests.
 test_functional : all
 	$(Q)$(MAKE) -C test/functional/src
-	$(Q)$(PYTEST) test/functional -v
+	$(Q)$(PYTEST) test/functional -v -k $(PYTESTFILES)
 
 # Run all tests.
 test_unit :
@@ -71,8 +78,24 @@ endif
 ifndef USE_STANDARD_TMPFILE
 	$(Q)$(MAKE) -C third_party/tmpfileplus
 endif
+ifndef USE_NO_MD5
+	$(Q)$(MAKE) -C third_party/md5
+endif
 	$(Q)$(MAKE) -C src test_lib
 	$(Q)$(MAKE) -C test/unit test
+
+# Test Cmake. This test should really be done with Cmake in the cmake dir but
+# this is a workaround for now.
+test_cmake :
+ifneq ($(findstring m32,$(CFLAGS)),m32)
+	$(Q)$(MAKE) -C src clean
+	$(Q)cd cmake; cmake .. -DBUILD_TESTS=ON -DBUILD_EXAMPLES=ON; make clean; make; cp libxlsxwriter.a ../src/
+	$(Q)cmake/xlsxwriter_unit
+	$(Q)$(MAKE) -C test/functional/src
+	$(Q)$(PYTEST) test/functional -v -k $(PYTESTFILES)
+else
+	@echo "Skipping Cmake tests on 32 bit target."
+endif
 
 # Test the functional test exes with valgrind (in 64bit mode only).
 test_valgrind : all
@@ -122,6 +145,9 @@ endif
 ifndef USE_STANDARD_TMPFILE
 	$(Q)$(MAKE) -C third_party/tmpfileplus
 endif
+ifndef USE_NO_MD5
+	$(Q)$(MAKE) -C third_party/md5
+endif
 	$(Q)$(MAKE) -C src clean
 	$(Q)rm -f  lib/*
 	$(Q)rm -rf  cov-int
@@ -138,6 +164,9 @@ ifndef USE_SYSTEM_MINIZIP
 endif
 ifndef USE_STANDARD_TMPFILE
 	$(Q)$(MAKE) -C third_party/tmpfileplus
+endif
+ifndef USE_NO_MD5
+	$(Q)$(MAKE) -C third_party/md5
 endif
 	$(Q)$(MAKE) -C src clean
 	$(Q)rm -f  lib/*
