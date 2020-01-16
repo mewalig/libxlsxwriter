@@ -4909,7 +4909,8 @@ worksheet_write_url_opt(lxw_worksheet *self,
         url_string = lxw_strdup(found_string + 1);
         GOTO_LABEL_ON_MEM_ERROR(url_string, mem_error);
 
-        *found_string = '\0';
+        if(found_string != url_copy) /*** or maybe if(link_type == HYPERLINK_EXTERNAL) ***/
+          *found_string = '\0';
     }
 
     /* Escape the URL. */
