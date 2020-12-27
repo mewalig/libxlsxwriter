@@ -55,7 +55,7 @@ lxw_sst_new(uint64_t max_memory)
     RB_INIT(sst->rb_tree);
 
     /* Initialize max_memory */
-    sst->max_memory = max_memory;
+    /* sst->max_memory = max_memory; */
 
     return sst;
 
@@ -251,7 +251,7 @@ lxw_get_sst_index(lxw_sst *sst, const char *string, uint8_t is_rich_string)
     struct sst_element *element;
     struct sst_element *existing_element;
 
-    uint64_t max_memory = sst->max_memory;
+/*   uint64_t max_memory = sst->max_memory; */
 
     /* Create an sst element to potentially add to the table. */
     element = calloc(1, sizeof(struct sst_element));
@@ -265,28 +265,18 @@ lxw_get_sst_index(lxw_sst *sst, const char *string, uint8_t is_rich_string)
     element->string = (char *)string;
     element->is_rich_string = is_rich_string;
 
-    if(max_memory && sst->used_memory < max_memory) {
+    /* Try to insert it and see whether we already have that string. */
+    existing_element = RB_INSERT(sst_rb_tree, sst->rb_tree, element);
 
-      /* we have an sst memory limit */
-      existing_element = RB_FIND(sst_rb_tree, sst->rb_tree, element);
-
-      /* if no element found, keep the new element */
-      if(existing_element == NULL)
-        sst->used_memory += sizeof(*element) + strlen(string) + 1;
-    } else
-      existing_element = NULL;
-
-    /* only if existing_element == NULL, or we have sufficient memory capacity */
-    if(existing_element == NULL)
-      existing_element = RB_INSERT(sst_rb_tree, sst->rb_tree, element);
-    else {
     /* If existing_element is not NULL, then it already existed. */
     /* Free new created element. */
-        free(element);
-        sst->string_count++;
-        return existing_element;
+    if (existing_element) {
+      free(element);
+      sst->string_count++;
+      return existing_element;
     }
 
+    /* we know we will keep this element. dupe the string now */
     element->string = lxw_strdup(string);
 
     /* If it didn't exist, also add it to the insertion order linked list. */

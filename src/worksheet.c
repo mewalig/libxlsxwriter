@@ -7,10 +7,6 @@
  *
  */
 
-#ifdef USE_FMEMOPEN
-#define _POSIX_C_SOURCE 200809L
-#endif
-
 #include "xlsxwriter/xmlwriter.h"
 #include "xlsxwriter/worksheet.h"
 #include "xlsxwriter/format.h"
@@ -22,6 +18,7 @@
 #define LXW_PRINT_ACROSS                 1
 #define LXW_VALIDATION_MAX_TITLE_LENGTH  32
 #define LXW_VALIDATION_MAX_STRING_LENGTH 255
+
 
 /*
  * Forward declarations.
@@ -100,6 +97,7 @@ lxw_worksheet_new(lxw_worksheet_init_data *init_data)
     worksheet->hyperlinks->cached_row_num = LXW_ROW_MAX + 1;
     worksheet->comments->cached_row_num = LXW_ROW_MAX + 1;
 
+    
     if (init_data && init_data->optimize) {
         worksheet->array = calloc(LXW_COL_MAX, sizeof(struct lxw_cell *));
         GOTO_LABEL_ON_MEM_ERROR(worksheet->array, mem_error);
@@ -267,7 +265,6 @@ _free_cell(lxw_cell *cell)
 
     if (cell->type != NUMBER_CELL && cell->type != STRING_CELL
         && cell->type != BLANK_CELL && cell->type != BOOLEAN_CELL) {
-
         free(cell->u.string);
     }
 
@@ -1938,7 +1935,7 @@ _write_row(lxw_worksheet *self, lxw_row *row, char *spans)
  * we use the default value. If the column is hidden it has a value of zero.
  */
 STATIC int32_t
-_worksheet_size_col(lxw_worksheet *self, lxw_col_t col_num, uint8_t anchor)
+_worksheet_size_col(lxw_worksheet *self, lxw_col_t col_num)
 {
     lxw_col_options *col_opt = NULL;
     uint32_t pixels;
@@ -1965,7 +1962,7 @@ _worksheet_size_col(lxw_worksheet *self, lxw_col_t col_num, uint8_t anchor)
         width = col_opt->width;
 
         /* Convert to pixels. */
-        if (col_opt->hidden && anchor != LXW_OBJECT_MOVE_AND_SIZE_AFTER) {
+        if (width == 0) {
             pixels = 0;
         }
         else if (width < 1.0) {
@@ -1988,22 +1985,24 @@ _worksheet_size_col(lxw_worksheet *self, lxw_col_t col_num, uint8_t anchor)
  * it has a value of zero.
  */
 STATIC int32_t
-_worksheet_size_row(lxw_worksheet *self, lxw_row_t row_num, uint8_t anchor)
+_worksheet_size_row(lxw_worksheet *self, lxw_row_t row_num)
 {
     lxw_row *row;
     uint32_t pixels;
+    double height;
 
     row = lxw_worksheet_find_row(self, row_num);
 
-    /* Note, the 0.75 below is due to the difference between 72/96 DPI. */
     if (row) {
-        if (row->hidden && anchor != LXW_OBJECT_MOVE_AND_SIZE_AFTER)
+        height = row->height;
+
+        if (height == 0)
             pixels = 0;
         else
-            pixels = (uint32_t) (row->height / 0.75);
+            pixels = (uint32_t) (4.0 / 3.0 * height);
     }
     else {
-        pixels = (uint32_t) (self->default_row_height / 0.75);
+        pixels = (uint32_t) (4.0 / 3.0 * self->default_row_height);
     }
 
     return pixels;
@@ -2068,8 +2067,6 @@ _worksheet_position_object_pixels(lxw_worksheet *self,
     uint32_t y_abs = 0;         /* Abs. distance to top  side of object. */
 
     uint32_t i;
-    uint8_t anchor = drawing_object->anchor;
-    uint8_t ignore_anchor = LXW_OBJECT_POSITION_DEFAULT;
 
     col_start = object_props->col;
     row_start = object_props->row;
@@ -2080,13 +2077,13 @@ _worksheet_position_object_pixels(lxw_worksheet *self,
 
     /* Adjust start column for negative offsets. */
     while (x1 < 0 && col_start > 0) {
-        x1 += _worksheet_size_col(self, col_start - 1, ignore_anchor);
+        x1 += _worksheet_size_col(self, col_start - 1);
         col_start--;
     }
 
     /* Adjust start row for negative offsets. */
     while (y1 < 0 && row_start > 0) {
-        y1 += _worksheet_size_row(self, row_start - 1, ignore_anchor);
+        y1 += _worksheet_size_row(self, row_start - 1);
         row_start--;
     }
 
@@ -2100,7 +2097,7 @@ _worksheet_position_object_pixels(lxw_worksheet *self,
     /* Calculate the absolute x offset of the top-left vertex. */
     if (self->col_size_changed) {
         for (i = 0; i < col_start; i++)
-            x_abs += _worksheet_size_col(self, i, ignore_anchor);
+            x_abs += _worksheet_size_col(self, i);
     }
     else {
         /* Optimization for when the column widths haven't changed. */
@@ -2113,7 +2110,7 @@ _worksheet_position_object_pixels(lxw_worksheet *self,
     /* Store the column change to allow optimizations. */
     if (self->row_size_changed) {
         for (i = 0; i < row_start; i++)
-            y_abs += _worksheet_size_row(self, i, ignore_anchor);
+            y_abs += _worksheet_size_row(self, i);
     }
     else {
         /* Optimization for when the row heights haven"t changed. */
@@ -2123,14 +2120,14 @@ _worksheet_position_object_pixels(lxw_worksheet *self,
     y_abs += y1;
 
     /* Adjust start col for offsets that are greater than the col width. */
-    while (x1 >= _worksheet_size_col(self, col_start, anchor)) {
-        x1 -= _worksheet_size_col(self, col_start, ignore_anchor);
+    while (x1 >= _worksheet_size_col(self, col_start)) {
+        x1 -= _worksheet_size_col(self, col_start);
         col_start++;
     }
 
     /* Adjust start row for offsets that are greater than the row height. */
-    while (y1 >= _worksheet_size_row(self, row_start, anchor)) {
-        y1 -= _worksheet_size_row(self, row_start, ignore_anchor);
+    while (y1 >= _worksheet_size_row(self, row_start)) {
+        y1 -= _worksheet_size_row(self, row_start);
         row_start++;
     }
 
@@ -2138,22 +2135,18 @@ _worksheet_position_object_pixels(lxw_worksheet *self,
     col_end = col_start;
     row_end = row_start;
 
-    /* Only offset the image in the cell if the row/col is hidden. */
-    if (_worksheet_size_col(self, col_start, anchor) > 0)
-        width = width + x1;
-
-    if (_worksheet_size_row(self, row_start, anchor) > 0)
-        height = height + y1;
+    width = width + x1;
+    height = height + y1;
 
     /* Subtract the underlying cell widths to find the end cell. */
-    while (width >= _worksheet_size_col(self, col_end, anchor)) {
-        width -= _worksheet_size_col(self, col_end, anchor);
+    while (width >= _worksheet_size_col(self, col_end)) {
+        width -= _worksheet_size_col(self, col_end);
         col_end++;
     }
 
     /* Subtract the underlying cell heights to find the end cell. */
-    while (height >= _worksheet_size_row(self, row_end, anchor)) {
-        height -= _worksheet_size_row(self, row_end, anchor);
+    while (height >= _worksheet_size_row(self, row_end)) {
+        height -= _worksheet_size_row(self, row_end);
         row_end++;
     }
 
@@ -2334,8 +2327,6 @@ _worksheet_position_vml_object(lxw_worksheet *self, lxw_vml_obj *comment)
     object_props.width = comment->width;
     object_props.height = comment->height;
 
-    drawing_object.anchor = LXW_OBJECT_DONT_MOVE_DONT_SIZE;
-
     _worksheet_position_object_pixels(self, &object_props, &drawing_object);
 
     comment->from.col = drawing_object.from.col;
@@ -2390,11 +2381,8 @@ lxw_worksheet_prepare_image(lxw_worksheet *self,
     drawing_object = calloc(1, sizeof(lxw_drawing_object));
     RETURN_VOID_ON_MEM_ERROR(drawing_object);
 
-    drawing_object->anchor = LXW_OBJECT_MOVE_DONT_SIZE;
-    if (object_props->object_position)
-        drawing_object->anchor = object_props->object_position;
-
-    drawing_object->type = LXW_DRAWING_IMAGE;
+    drawing_object->anchor_type = LXW_ANCHOR_TYPE_IMAGE;
+    drawing_object->edit_as = LXW_ANCHOR_EDIT_AS_ONE_CELL;
     drawing_object->description = lxw_strdup(object_props->description);
     drawing_object->tip = lxw_strdup(object_props->tip);
     drawing_object->rel_index = 0;
@@ -2563,11 +2551,8 @@ lxw_worksheet_prepare_chart(lxw_worksheet *self,
     drawing_object = calloc(1, sizeof(lxw_drawing_object));
     RETURN_VOID_ON_MEM_ERROR(drawing_object);
 
-    drawing_object->anchor = LXW_OBJECT_MOVE_AND_SIZE;
-    if (object_props->object_position)
-        drawing_object->anchor = object_props->object_position;
-
-    drawing_object->type = LXW_DRAWING_CHART;
+    drawing_object->anchor_type = LXW_ANCHOR_TYPE_CHART;
+    drawing_object->edit_as = LXW_ANCHOR_EDIT_AS_ONE_CELL;
     drawing_object->description = lxw_strdup("TODO_DESC");
     drawing_object->tip = NULL;
     drawing_object->rel_index = _get_drawing_rel_index(self, NULL);
@@ -2699,7 +2684,7 @@ lxw_worksheet_prepare_vml_objects(lxw_worksheet *self,
     };
 
     /* If this allocation fails it will be dealt with in packager.c. */
-    vml_data_id_str = calloc(1, data_str_len + 2);
+    vml_data_id_str = calloc(1, data_str_len);
     GOTO_LABEL_ON_MEM_ERROR(vml_data_id_str, mem_error);
 
     /* Create the CSV list in the allocated space. */
@@ -4522,22 +4507,17 @@ _get_string_cell(lxw_worksheet *self,
                  char *string, uint8_t is_rich_string,
                  lxw_format *format,
                  lxw_error *err) {
-  static lxw_cell *cell;
-  char used_sst = 0;
-
+  lxw_cell *cell = NULL;
   *err = 0;
 
-  if(!self->optimize || (self->sst && self->sst->max_memory)) {
+  if (!self->optimize) {
     /* Get the SST element and string id. */
     struct sst_element *sst_element = lxw_get_sst_index(self->sst, string, is_rich_string);
 
     if(!sst_element) {
-      if(!(self->sst && self->sst->max_memory)) {
-        *err = LXW_ERROR_SHARED_STRING_INDEX_NOT_FOUND;
-        return NULL;
-      }
+      *err = LXW_ERROR_SHARED_STRING_INDEX_NOT_FOUND;
+      return NULL;
     } else {
-      used_sst = 1;
       if(is_rich_string == LXW_TRUE)
         free(string);
 
@@ -4545,7 +4525,7 @@ _get_string_cell(lxw_worksheet *self,
     }
   }
 
-  if(!used_sst) {
+  if(!cell) {
     char *string_copy;
     /* Look for and escape control chars in the string. */
     if(strpbrk(string, "\x01\x02\x03\x04\x05\x06\x07\x08\x0B\x0C"
@@ -5085,6 +5065,7 @@ worksheet_write_rich_string(lxw_worksheet *self,
 
     /* Create a tmp file for the styles object. */
     tmpfile = lxw_tmpfile(self->tmpdir);
+    /* tmpfile = fmemopen(NULL, 8192, "wb"); */
     if (!tmpfile)
         return LXW_ERROR_CREATING_TMPFILE;
 
@@ -5162,12 +5143,60 @@ mem_error:
 }
 
 /*
+ * Write a rich string to an Excel file using user created html.
+ *
+ * Optimized workaround to write raw html representing a rich string to avoid
+ * the overhead of opening a tmpfile to generate the html.
+ */
+lxw_error
+worksheet_write_rich_string_html(lxw_worksheet *self,
+                                 lxw_row_t row_num,
+                                 lxw_col_t col_num,
+                                 char *rich_string, lxw_format *format)
+{
+    lxw_cell *cell = NULL;
+    int32_t string_id;
+    struct sst_element *sst_element;
+    lxw_error err;
+
+    err = _check_dimensions(self, row_num, col_num, LXW_FALSE, LXW_FALSE);
+    if (err)
+        return err;
+
+    if (lxw_utf8_strlen(rich_string) > LXW_STR_MAX) {
+        return LXW_ERROR_MAX_STRING_LENGTH_EXCEEDED;
+    }
+
+    if (!self->optimize) {
+        /* Get the SST element and string id. */
+        sst_element = lxw_get_sst_index(self->sst, rich_string, LXW_TRUE);
+
+        if (!sst_element)
+          return LXW_ERROR_SHARED_STRING_INDEX_NOT_FOUND;
+        else  {
+          string_id = sst_element->index;
+          cell = _new_string_cell(row_num, col_num, string_id,
+                                  sst_element->string, format);
+        }
+    }
+
+    if(!cell)
+        cell = _new_inline_rich_string_cell(row_num,
+                                            col_num,
+                                            lxw_strdup(rich_string), format);
+
+    _insert_cell(self, row_num, col_num, cell);
+
+    return LXW_NO_ERROR;
+}
+
+/*
  * Write a comment to a worksheet cell in Excel.
  */
 lxw_error
 worksheet_write_comment_opt(lxw_worksheet *self,
                             lxw_row_t row_num, lxw_col_t col_num,
-                            const char *text, lxw_comment_options *options)
+                            char *text, lxw_comment_options *options)
 {
     lxw_cell *cell;
     lxw_error err;
@@ -5221,8 +5250,7 @@ mem_error:
  */
 lxw_error
 worksheet_write_comment(lxw_worksheet *self,
-                        lxw_row_t row_num, lxw_col_t col_num,
-                        const char *string)
+                        lxw_row_t row_num, lxw_col_t col_num, char *string)
 {
     return worksheet_write_comment_opt(self, row_num, col_num, string, NULL);
 }
@@ -6259,7 +6287,6 @@ worksheet_insert_image_opt(lxw_worksheet *self,
         object_props->y_offset = user_options->y_offset;
         object_props->x_scale = user_options->x_scale;
         object_props->y_scale = user_options->y_scale;
-        object_props->object_position = user_options->object_position;
         object_props->url = lxw_strdup(user_options->url);
         object_props->tip = lxw_strdup(user_options->tip);
 
@@ -6320,14 +6347,9 @@ worksheet_insert_image_buffer_opt(lxw_worksheet *self,
         return LXW_ERROR_NULL_PARAMETER_IGNORED;
     }
 
-    /* Write the image buffer to a file (preferably in memory) so we can read
-     * the dimensions like an ordinary file. */
-#ifdef USE_FMEMOPEN
-    image_stream = fmemopen(NULL, image_size, "w+b");
-#else
+    /* Write the image buffer to a temporary file so we can read the
+     * dimensions like an ordinary file. */
     image_stream = lxw_tmpfile(self->tmpdir);
-#endif
-
     if (!image_stream)
         return LXW_ERROR_CREATING_TMPFILE;
 
@@ -6363,9 +6385,6 @@ worksheet_insert_image_buffer_opt(lxw_worksheet *self,
         object_props->y_offset = user_options->y_offset;
         object_props->x_scale = user_options->x_scale;
         object_props->y_scale = user_options->y_scale;
-        object_props->url = lxw_strdup(user_options->url);
-        object_props->tip = lxw_strdup(user_options->tip);
-        object_props->object_position = user_options->object_position;
         object_props->description = lxw_strdup(user_options->description);
     }
 
@@ -6455,7 +6474,6 @@ worksheet_insert_chart_opt(lxw_worksheet *self,
         object_props->y_offset = user_options->y_offset;
         object_props->x_scale = user_options->x_scale;
         object_props->y_scale = user_options->y_scale;
-        object_props->object_position = user_options->object_position;
     }
 
     /* Copy other options or set defaults. */

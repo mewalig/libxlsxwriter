@@ -183,10 +183,3 @@ class TestCompareXLSXFiles(base_test_class.XLSXBaseTest):
 
     def test_hyperlink49(self):
         self.run_exe_test('test_hyperlink49')
-
-    # Test in-memory image handling.
-    def test_hyperlink81(self):
-        self.run_exe_test('test_hyperlink81', 'hyperlink49.xlsx')
-
-    def test_hyperlink81(self):
-        self.run_exe_test('test_hyperlink82', 'hyperlink33.xlsx')

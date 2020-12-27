@@ -11,7 +11,7 @@ ifdef V
 Q=
 endif
 
-DESTDIR ?=
+DESTIDR ?=
 PREFIX  ?= /usr/local
 
 PYTEST ?= py.test
@@ -46,7 +46,7 @@ clean :
 	$(Q)rm -rf test/functional/__pycache__
 	$(Q)rm -f  test/functional/*.pyc
 	$(Q)rm -f  lib/*
-ifndef USE_SYSTEM_MINIZIP
+ifndef USE_STANDARD_TMPFILE
 	$(Q)$(MAKE) clean -C third_party/minizip
 endif
 ifndef USE_STANDARD_TMPFILE

@@ -11,7 +11,7 @@ ifdef V
 Q=
 endif
 
-DESTDIR ?=
+DESTIDR ?=
 PREFIX  ?= /usr/local
 
 # Directory variables.
@@ -74,13 +74,9 @@ ifdef USE_DOUBLE_FUNCTION
 CFLAGS += -DUSE_DOUBLE_FUNCTION
 endif
 
-# Use fmemopen() to avoid creating certain temporary files
-ifdef USE_FMEMOPEN
-CFLAGS += -DUSE_FMEMOPEN
-endif
-
 # Flags passed to compiler.
-CFLAGS   += -O3 -Wall -Wextra -Wstrict-prototypes -pedantic -ansi
+CFLAGS   += -O3
+CFLAGS   += -Wall -Wextra -pedantic -ansi
 
 # Fix for modified zconf.h on Gentoo.
 ifneq (,$(findstring gentoo, $(shell uname -sr)))

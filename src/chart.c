@@ -4784,7 +4784,7 @@ _chart_initialize_doughnut_chart(lxw_chart *self)
  * Initialize a line chart.
  */
 STATIC void
-_chart_initialize_line_chart(lxw_chart *self, uint8_t type)
+_chart_initialize_line_chart(lxw_chart *self)
 {
     self->chart_group = LXW_CHART_LINE;
     _chart_set_default_marker_type(self, LXW_CHART_MARKER_NONE);
@@ -4792,17 +4792,6 @@ _chart_initialize_line_chart(lxw_chart *self, uint8_t type)
     self->x_axis->is_category = LXW_TRUE;
     self->y_axis->is_value = LXW_TRUE;
     self->default_label_position = LXW_CHART_LABEL_POSITION_RIGHT;
-
-    if (type == LXW_CHART_LINE_STACKED) {
-        self->grouping = LXW_GROUPING_STACKED;
-        self->subtype = LXW_CHART_SUBTYPE_STACKED;
-    }
-
-    if (type == LXW_CHART_LINE_STACKED_PERCENT) {
-        self->grouping = LXW_GROUPING_PERCENTSTACKED;
-        _chart_axis_set_default_num_format(self->y_axis, "0%");
-        self->subtype = LXW_CHART_SUBTYPE_STACKED;
-    }
 
     /* Initialize the function pointers for this chart type. */
     self->write_chart_type = _chart_write_line_chart;
@@ -4898,9 +4887,7 @@ _chart_initialize(lxw_chart *self, uint8_t type)
             break;
 
         case LXW_CHART_LINE:
-        case LXW_CHART_LINE_STACKED:
-        case LXW_CHART_LINE_STACKED_PERCENT:
-            _chart_initialize_line_chart(self, type);
+            _chart_initialize_line_chart(self);
             break;
 
         case LXW_CHART_PIE:

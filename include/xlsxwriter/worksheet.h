@@ -43,6 +43,8 @@
 #ifndef __LXW_WORKSHEET_H__
 #define __LXW_WORKSHEET_H__
 
+#define USES_SST(data) (!data->optimize || (data->sst && data->sst->max_memory))
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -216,27 +218,6 @@ enum lxw_comment_display_types {
     /** Show the cell comment. Can also be set for the worksheet with the
      *  `worksheet_show_comments()` function.*/
     LXW_COMMENT_DISPLAY_VISIBLE
-};
-
-/** Options to control the positioning of worksheet objects such as images
- *  or charts. See @ref working_with_object_positioning. */
-enum lxw_object_position {
-
-    /** Default positioning for the object. */
-    LXW_OBJECT_POSITION_DEFAULT,
-
-    /** Move and size with the worksheet object with the cells. */
-    LXW_OBJECT_MOVE_AND_SIZE,
-
-    /** Move but don't size with the worksheet object with the cells. */
-    LXW_OBJECT_MOVE_DONT_SIZE,
-
-    /** Don't move or size the worksheet object with the cells. */
-    LXW_OBJECT_DONT_MOVE_DONT_SIZE,
-
-    /** Same as #LXW_OBJECT_MOVE_AND_SIZE except libxlsxwriter applies hidden
-     *  cells after the object is inserted. */
-    LXW_OBJECT_MOVE_AND_SIZE_AFTER
 };
 
 enum cell_types {
@@ -623,8 +604,7 @@ typedef struct lxw_image_options {
     /** Y scale of the image as a decimal. */
     double y_scale;
 
-    /** Object position - use one of the values of #lxw_object_position.
-     *  See @ref working_with_object_positioning.*/
+    /** Object position - not implemented yet.  Set to 0.*/
     uint8_t object_position;
 
     /** Optional description of the image. Defaults to the image filename
@@ -660,8 +640,7 @@ typedef struct lxw_chart_options {
     /** Y scale of the chart as a decimal. */
     double y_scale;
 
-    /** Object position - use one of the values of #lxw_object_position.
-     *  See @ref working_with_object_positioning.*/
+    /** Object position - not implemented yet. Set to 0. */
     uint8_t object_position;
 
 } lxw_chart_options;
@@ -1713,6 +1692,13 @@ lxw_error worksheet_write_rich_string(lxw_worksheet *worksheet,
                                       lxw_rich_string_tuple *rich_string[],
                                       lxw_format *format);
 
+
+lxw_error worksheet_write_rich_string_html(lxw_worksheet *worksheet,
+                                           lxw_row_t row_num,
+                                           lxw_col_t col_num,
+                                           char *rich_string,
+                                           lxw_format *format);
+
 /**
  * @brief Write a comment to a worksheet cell.
  *
@@ -1740,8 +1726,7 @@ lxw_error worksheet_write_rich_string(lxw_worksheet *worksheet,
  *
  */
 lxw_error worksheet_write_comment(lxw_worksheet *worksheet,
-                                  lxw_row_t row, lxw_col_t col,
-                                  const char *string);
+                                  lxw_row_t row, lxw_col_t col, char *string);
 
 /**
  * @brief Write a comment to a worksheet cell with options.
@@ -1792,7 +1777,7 @@ lxw_error worksheet_write_comment(lxw_worksheet *worksheet,
  */
 lxw_error worksheet_write_comment_opt(lxw_worksheet *worksheet,
                                       lxw_row_t row, lxw_col_t col,
-                                      const char *string,
+                                      char *string,
                                       lxw_comment_options *options);
 
 /**
@@ -2091,7 +2076,7 @@ lxw_error worksheet_set_column_opt(lxw_worksheet *worksheet,
  * default height changed due to a font that is larger than the default font
  * size or that has text wrapping turned on. To avoid this you should
  * explicitly set the height of the row using `worksheet_set_row()` if it
- * crosses an inserted image. See @ref working_with_object_positioning.
+ * crosses an inserted image.
  *
  * BMP images are only supported for backward compatibility. In general it is
  * best to avoid BMP images since they aren't compressed. If used, BMP images

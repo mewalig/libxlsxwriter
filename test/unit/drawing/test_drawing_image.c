@@ -10,7 +10,6 @@
 #include "../helper.h"
 
 #include "xlsxwriter/drawing.h"
-#include "xlsxwriter/worksheet.h"
 
 // Test assembling a complete Drawing file.
 CTEST(drawing, drawing_image01) {
@@ -68,8 +67,8 @@ CTEST(drawing, drawing_image01) {
 
     lxw_drawing_object *drawing_object = calloc(1, sizeof(lxw_drawing_object));
 
-    drawing_object->type = LXW_DRAWING_IMAGE;
-    drawing_object->anchor = LXW_OBJECT_MOVE_DONT_SIZE;
+    drawing_object->anchor_type = LXW_ANCHOR_TYPE_IMAGE;
+    drawing_object->edit_as = LXW_ANCHOR_EDIT_AS_ONE_CELL;
 
     drawing_object->from.col = 2;
     drawing_object->from.col_offset = 0;

@@ -56,7 +56,7 @@ extern "C" {
 #endif
 /* *INDENT-ON* */
 
-lxw_comment *lxw_comment_new(void);
+lxw_comment *lxw_comment_new();
 void lxw_comment_free(lxw_comment *comment);
 void lxw_comment_assemble_xml_file(lxw_comment *self);
 
